@@ -1,0 +1,485 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Data Repository Explorer</title>
+<meta name="description" content="Interactive explorer for research data repositories — live re3data API, ESIP Data Help Desk catalog, GREI generalist picker, force-directed cluster view.">
+<style>
+:root {
+  --color-background-primary: #ffffff;
+  --color-background-secondary: #f7f5ef;
+  --color-background-tertiary: #f1efe8;
+  --color-text-primary: #1a1a1a;
+  --color-text-secondary: #5f5e5a;
+  --color-text-tertiary: #888780;
+  --color-text-success: #0f6e56;
+  --color-border-tertiary: rgba(0,0,0,0.10);
+  --color-border-secondary: rgba(0,0,0,0.20);
+  --border-radius-md: 8px;
+  --border-radius-lg: 12px;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-background-primary: #1f1f1d;
+    --color-background-secondary: #262624;
+    --color-background-tertiary: #18181a;
+    --color-text-primary: #f1efe8;
+    --color-text-secondary: #b4b2a9;
+    --color-text-tertiary: #888780;
+    --color-text-success: #5DCAA5;
+    --color-border-tertiary: rgba(255,255,255,0.12);
+    --color-border-secondary: rgba(255,255,255,0.22);
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: var(--font-sans);
+  background: var(--color-background-tertiary);
+  color: var(--color-text-primary);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+.page { max-width: 1100px; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
+.page-header { margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 0.5px solid var(--color-border-tertiary); }
+.page-header h1 { font-size: 22px; font-weight: 500; margin: 0 0 4px; }
+.page-header p { font-size: 13px; color: var(--color-text-secondary); margin: 0; max-width: 70ch; }
+.page-footer { margin-top: 3rem; padding-top: 1rem; border-top: 0.5px solid var(--color-border-tertiary); font-size: 12px; color: var(--color-text-tertiary); display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.page-footer a { color: var(--color-text-secondary); }
+input, select, button {
+  font-family: inherit;
+  font-size: 14px;
+  padding: 8px 12px;
+  border: 0.5px solid var(--color-border-secondary);
+  background: var(--color-background-primary);
+  color: var(--color-text-primary);
+  border-radius: var(--border-radius-md);
+  outline: none;
+}
+input:focus, select:focus { box-shadow: 0 0 0 2px rgba(56,138,221,0.35); border-color: rgba(56,138,221,0.6); }
+input[type="text"] { width: 100%; }
+input[type="checkbox"] { width: auto; padding: 0; }
+button { cursor: pointer; transition: background 120ms; }
+button:hover { background: var(--color-background-secondary); }
+button:active { transform: scale(0.98); }
+a { color: #185FA5; text-decoration: none; }
+@media (prefers-color-scheme: dark) { a { color: #85B7EB; } }
+a:hover { text-decoration: underline; }
+code { font-family: var(--font-mono); font-size: 11px; padding: 1px 4px; background: var(--color-background-secondary); border-radius: 3px; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0; }
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="page-header">
+  <h1>Data repository explorer</h1>
+  <p>Live re3data API · ESIP Data Help Desk catalog · GREI generalist picker · force-directed cluster view. Curated for ocean, climate, and Earth-science data infrastructure.</p>
+</header>
+
+<h2 class="sr-only">Interactive data repository explorer with CORS-proxied live re3data fetch, zoomable cluster view, and GREI generalist picker.</h2>
+
+<div id="live-status" style="display:flex; align-items:center; gap:8px; font-size:12px; color:var(--color-text-secondary); padding:8px 12px; background:var(--color-background-secondary); border-radius:var(--border-radius-md); margin:0 0 12px;">
+  <span id="live-dot" style="width:8px; height:8px; border-radius:50%; background:#888780; display:inline-block;"></span>
+  <span id="live-text">Connecting to re3data API…</span>
+  <span style="flex:1;"></span>
+  <button id="live-retry" style="font-size:11px; padding:4px 10px;">Retry</button>
+</div>
+
+<div style="display:flex; gap:4px; margin:0 0 12px; border-bottom:0.5px solid var(--color-border-tertiary);">
+  <button id="tab-browse" style="border:none; background:none; padding:8px 14px; font-size:13px; border-bottom:2px solid var(--color-text-primary); cursor:pointer; color:var(--color-text-primary);">Browse</button>
+  <button id="tab-cluster" style="border:none; background:none; padding:8px 14px; font-size:13px; border-bottom:2px solid transparent; color:var(--color-text-secondary); cursor:pointer;">Cluster view</button>
+  <button id="tab-grei" style="border:none; background:none; padding:8px 14px; font-size:13px; border-bottom:2px solid transparent; color:var(--color-text-secondary); cursor:pointer;">GREI picker</button>
+</div>
+
+<div id="view-browse">
+  <div style="display:grid; grid-template-columns: minmax(0,2fr) minmax(0,1fr) minmax(0,1fr); gap:8px; margin:0 0 8px;">
+    <input id="q" type="text" placeholder="Search name, host, keyword…" />
+    <select id="disc"><option value="">All disciplines</option></select>
+    <select id="cur">
+      <option value="">All curation levels</option>
+      <option>Generalist</option><option>Moderate</option><option>Full discipline-specific</option>
+    </select>
+  </div>
+  <div style="display:flex; gap:12px; align-items:center; margin:0 0 12px; font-size:13px; flex-wrap:wrap;">
+    <label style="display:flex; align-items:center; gap:6px; cursor:pointer;"><input type="checkbox" id="pub" /> Publisher-accepted (✝)</label>
+    <label style="display:flex; align-items:center; gap:6px; cursor:pointer;"><input type="checkbox" id="livesrc" /> Include live re3data results</label>
+    <span style="color:var(--color-text-secondary); margin-left:auto;" id="counter">—</span>
+  </div>
+
+  <div style="display:grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap:8px; margin:0 0 12px;">
+    <div style="background:var(--color-background-secondary); border-radius:var(--border-radius-md); padding:10px 12px;">
+      <div style="font-size:12px; color:var(--color-text-secondary);">Showing</div>
+      <div id="m-count" style="font-size:20px; font-weight:500;">—</div>
+    </div>
+    <div style="background:var(--color-background-secondary); border-radius:var(--border-radius-md); padding:10px 12px;">
+      <div style="font-size:12px; color:var(--color-text-secondary);">Disciplines</div>
+      <div id="m-disc" style="font-size:20px; font-weight:500;">—</div>
+    </div>
+    <div style="background:var(--color-background-secondary); border-radius:var(--border-radius-md); padding:10px 12px;">
+      <div style="font-size:12px; color:var(--color-text-secondary);">Publisher ✝</div>
+      <div id="m-pub" style="font-size:20px; font-weight:500;">—</div>
+    </div>
+    <div style="background:var(--color-background-secondary); border-radius:var(--border-radius-md); padding:10px 12px;">
+      <div style="font-size:12px; color:var(--color-text-secondary);">Re3data total</div>
+      <div id="m-r3" style="font-size:20px; font-weight:500;">—</div>
+    </div>
+  </div>
+
+  <div id="list" style="display:flex; flex-direction:column; gap:8px;"></div>
+</div>
+
+<div id="view-cluster" style="display:none;">
+  <div style="font-size:13px; color:var(--color-text-secondary); margin:0 0 8px; line-height:1.6;">
+    Force-directed graph colored by discipline. Drag nodes, scroll to zoom, or use the controls. Hover for details, click to open.
+  </div>
+  <div id="legend" style="display:flex; flex-wrap:wrap; gap:10px; margin:0 0 8px; font-size:11px;"></div>
+  <div style="position:relative; width:100%;">
+    <div id="cluster" style="width:100%; height:560px; background:var(--color-background-secondary); border-radius:var(--border-radius-lg); overflow:hidden;"></div>
+    <div style="position:absolute; top:8px; right:8px; display:flex; flex-direction:column; gap:4px;">
+      <button id="zoom-in" title="Zoom in" style="width:32px; height:32px; padding:0; font-size:16px; line-height:1;">+</button>
+      <button id="zoom-out" title="Zoom out" style="width:32px; height:32px; padding:0; font-size:16px; line-height:1;">−</button>
+      <button id="zoom-reset" title="Reset view" style="width:32px; height:32px; padding:0; font-size:11px; line-height:1;">⌂</button>
+      <button id="zoom-fit" title="Fit to view" style="width:32px; height:32px; padding:0; font-size:11px; line-height:1;">▣</button>
+    </div>
+    <div style="position:absolute; bottom:8px; left:8px; font-size:11px; color:var(--color-text-tertiary); background:var(--color-background-primary); padding:3px 8px; border-radius:var(--border-radius-md); border:0.5px solid var(--color-border-tertiary);" id="zoom-readout">100%</div>
+  </div>
+  <div id="cluster-info" style="font-size:12px; color:var(--color-text-secondary); margin-top:8px; min-height:18px;"></div>
+</div>
+
+<div id="view-grei" style="display:none;">
+  <div style="font-size:13px; color:var(--color-text-secondary); margin:0 0 12px; line-height:1.6;">
+    The seven GREI generalists share DOIs, versioning, embargo, Make Data Count metrics, and FAIR compliance. Pick a size tier — $ means available for an additional fee.
+  </div>
+  <div style="margin:0 0 12px;">
+    <div style="font-size:12px; color:var(--color-text-secondary); margin-bottom:6px;">Storage tier per data package</div>
+    <div id="tiers" style="display:flex; gap:6px; flex-wrap:wrap;"></div>
+  </div>
+  <div id="grei-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap:8px;"></div>
+</div>
+
+<footer class="page-footer">
+  <div>Sources: <a href="https://www.re3data.org">re3data.org</a> · ESIP Data Help Desk · GREI</div>
+  <div>Built by <a href="https://sdiggs.github.io">Stephen C. Diggs</a></div>
+</footer>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<script>
+const REPOS = [
+  {name:"Zenodo",host:"CERN",country:"Switzerland",disc:"Generalist",cur:"Generalist",pub:true,url:"https://zenodo.org",r3:"r3d100010468",desc:"General-purpose open repository; DOIs for any research output."},
+  {name:"Dryad",host:"Dryad / DataONE",country:"USA",disc:"Generalist",cur:"Generalist",pub:true,url:"https://datadryad.org",r3:"r3d100000044",desc:"Curated general-purpose repository for data underlying publications."},
+  {name:"OSF",host:"COS",country:"USA",disc:"Generalist",cur:"Generalist",pub:true,url:"https://osf.io",r3:"r3d100011137",desc:"Project lifecycle collaboration tool with PIDs."},
+  {name:"Harvard Dataverse",host:"Harvard IQSS",country:"USA",disc:"Generalist",cur:"Generalist",pub:false,url:"https://dataverse.harvard.edu",r3:"r3d100010051",desc:"Open research data repository at Harvard."},
+  {name:"Figshare",host:"Digital Science",country:"UK",disc:"Generalist",cur:"Generalist",pub:false,url:"https://figshare.com",r3:"r3d100010216",desc:"Generalist repository for institutional and individual deposits."},
+  {name:"Mendeley Data",host:"Elsevier",country:"Netherlands",disc:"Generalist",cur:"Generalist",pub:false,url:"https://data.mendeley.com",r3:"r3d100011868",desc:"Generalist repository for research data."},
+  {name:"Vivli",host:"Vivli",country:"USA",disc:"Generalist",cur:"Generalist",pub:false,url:"https://vivli.org",r3:null,desc:"Generalist with managed access for clinical and sensitive data."},
+  {name:"PANGAEA",host:"AWI / MARUM",country:"Germany",disc:"Multidisciplinary",cur:"Moderate",pub:true,url:"https://www.pangaea.de",r3:"r3d100010134",desc:"Earth and environmental science data publisher."},
+  {name:"Ag Data Commons",host:"USDA",country:"USA",disc:"Federated portal",cur:"Full discipline-specific",pub:true,url:"https://agdatacommons.nal.usda.gov",r3:"r3d100012527",desc:"USDA agricultural research data catalog."},
+  {name:"Earthdata",host:"NASA",country:"USA",disc:"Federated portal",cur:"Full discipline-specific",pub:false,url:"https://www.earthdata.nasa.gov",r3:null,desc:"NASA Earth science data portal."},
+  {name:"NIST Science Data Portal",host:"NIST",country:"USA",disc:"Federated portal",cur:"Full discipline-specific",pub:false,url:"https://data.nist.gov",r3:null,desc:"Public datasets for science, engineering and technology."},
+  {name:"NCAR",host:"UCAR",country:"USA",disc:"Federated portal",cur:"Full discipline-specific",pub:false,url:"https://ncar.ucar.edu",r3:"r3d100010791",desc:"Atmospheric, ocean and meteorology observations."},
+  {name:"NOAA NCEI",host:"NOAA",country:"USA",disc:"Federated portal",cur:"Full discipline-specific",pub:true,url:"https://www.ncei.noaa.gov",r3:"r3d100011143",desc:"Gateway to NOAA environmental data including World Ocean Database."},
+  {name:"UNEP WESR",host:"UNEP",country:"Kenya",disc:"Federated portal",cur:"Full discipline-specific",pub:false,url:"https://wesr.unep.org",r3:null,desc:"UNEP global environmental data platform."},
+  {name:"USGS ScienceBase",host:"USGS",country:"USA",disc:"Federated portal",cur:"Full discipline-specific",pub:false,url:"https://www.sciencebase.gov",r3:"r3d100011546",desc:"Digital repository for USGS scientific data."},
+  {name:"NSIDC",host:"NSIDC / NASA",country:"USA",disc:"Cryosphere & polar",cur:"Full discipline-specific",pub:true,url:"https://nsidc.org",r3:"r3d100010110",desc:"Snow, ice and cryospheric data; NASA EOSDIS DAAC."},
+  {name:"UMN Polar Geospatial Center",host:"UMN",country:"USA",disc:"Cryosphere & polar",cur:"Full discipline-specific",pub:false,url:"https://www.pgc.umn.edu",r3:null,desc:"Polar satellite imagery, DEMs, historical maps."},
+  {name:"USAP-DC",host:"LDEO",country:"USA",disc:"Cryosphere & polar",cur:"Full discipline-specific",pub:true,url:"https://www.usap-dc.org",r3:"r3d100010660",desc:"NSF US Antarctic Program datasets."},
+  {name:"BCO-DMO",host:"WHOI",country:"USA",disc:"Ocean & marine",cur:"Full discipline-specific",pub:true,url:"https://www.bco-dmo.org",r3:"r3d100000012",desc:"Bio and chem oceanography data; NSF OCE-funded."},
+  {name:"CCHDO",host:"SIO / UCSD",country:"USA",disc:"Ocean & marine",cur:"Full discipline-specific",pub:true,url:"https://cchdo.ucsd.edu",r3:"r3d100010831",desc:"WOCE/GO-SHIP repeat hydrography data office."},
+  {name:"MGDS",host:"LDEO",country:"USA",disc:"Ocean & marine",cur:"Full discipline-specific",pub:true,url:"https://www.marine-geo.org",r3:"r3d100010273",desc:"Marine geophysical and bathymetric data."},
+  {name:"EarthChem",host:"LDEO",country:"USA",disc:"Geophysical & geodetic",cur:"Full discipline-specific",pub:true,url:"https://www.earthchem.org",r3:"r3d100010412",desc:"Geochemical, geochronological and mineralogical data."},
+  {name:"EPA Geospatial",host:"EPA",country:"USA",disc:"Geophysical & geodetic",cur:"Full discipline-specific",pub:false,url:"https://epa.gov/geospatial",r3:null,desc:"Open geospatial datasets."},
+  {name:"GAGE / UNAVCO",host:"EarthScope",country:"USA",disc:"Geophysical & geodetic",cur:"Full discipline-specific",pub:false,url:"https://www.unavco.org",r3:"r3d100010872",desc:"Geodetic data for Earth surface motion."},
+  {name:"OpenTopography",host:"SDSC / UCSD",country:"USA",disc:"Geophysical & geodetic",cur:"Full discipline-specific",pub:true,url:"https://opentopography.org",r3:"r3d100010655",desc:"High-resolution topographic data and tools."},
+  {name:"SAGE / IRIS",host:"EarthScope",country:"USA",disc:"Geophysical & geodetic",cur:"Full discipline-specific",pub:true,url:"https://www.iris.edu",r3:"r3d100010268",desc:"Seismological and related geophysical data."},
+  {name:"SGP",host:"SGP Project",country:"USA",disc:"Geophysical & geodetic",cur:"Full discipline-specific",pub:false,url:"https://sgp-search.io",r3:null,desc:"Sedimentary geochemical data with stratigraphic context."},
+  {name:"EDI",host:"UNM / UW-Madison",country:"USA",disc:"Ecological & terrestrial",cur:"Full discipline-specific",pub:true,url:"https://edirepository.org",r3:"r3d100010272",desc:"Primary LTER ecological and environmental data repository."},
+  {name:"ESS-DIVE",host:"LBNL / DOE",country:"USA",disc:"Ecological & terrestrial",cur:"Full discipline-specific",pub:true,url:"https://ess-dive.lbl.gov",r3:"r3d100000019",desc:"DOE BER environmental systems science data."},
+  {name:"HydroShare",host:"CUAHSI",country:"USA",disc:"Ecological & terrestrial",cur:"Full discipline-specific",pub:true,url:"https://www.hydroshare.org",r3:"r3d100010082",desc:"Hydrologic data and models."},
+  {name:"KNB",host:"NCEAS / UCSB",country:"USA",disc:"Ecological & terrestrial",cur:"Full discipline-specific",pub:true,url:"https://knb.ecoinformatics.org",r3:"r3d100010092",desc:"Ecological data, primarily NCEAS working groups."},
+  {name:"Water Quality Portal",host:"USGS / EPA",country:"USA",disc:"Ecological & terrestrial",cur:"Full discipline-specific",pub:true,url:"https://www.waterqualitydata.us",r3:null,desc:"NWIS and EPA WQX water quality data."},
+  {name:"GenBank",host:"NCBI / NIH",country:"USA",disc:"Biological & specimen",cur:"Full discipline-specific",pub:true,url:"https://www.ncbi.nlm.nih.gov/genbank",r3:"r3d100010528",desc:"Annotated NIH DNA sequence collection."},
+  {name:"GBIF",host:"GBIF Secretariat",country:"Denmark",disc:"Biological & specimen",cur:"Full discipline-specific",pub:true,url:"https://www.gbif.org",r3:"r3d100000039",desc:"Global biodiversity occurrence data."},
+  {name:"iDigBio",host:"University of Florida",country:"USA",disc:"Biological & specimen",cur:"Full discipline-specific",pub:false,url:"https://portal.idigbio.org",r3:"r3d100011494",desc:"Images and metadata for biological specimens."},
+  {name:"Morphobank",host:"Phoenix Bioinformatics",country:"USA",disc:"Biological & specimen",cur:"Full discipline-specific",pub:true,url:"https://morphobank.org",r3:"r3d100010101",desc:"Anatomy, physiology, behavior data for species."},
+  {name:"Movebank",host:"MPI Animal Behavior",country:"Germany",disc:"Biological & specimen",cur:"Full discipline-specific",pub:true,url:"https://datarepository.movebank.org",r3:"r3d100010469",desc:"Animal tracking and animal-borne sensor data."},
+  {name:"OBIS",host:"IOC-UNESCO / IODE",country:"Belgium",disc:"Biological & specimen",cur:"Full discipline-specific",pub:true,url:"https://obis.org",r3:"r3d100010088",desc:"Ocean Biodiversity Information System."},
+  {name:"Mindat.org",host:"Hudson Institute",country:"USA",disc:"Mineralogy",cur:"Full discipline-specific",pub:false,url:"https://www.mindat.org",r3:null,desc:"Crowdsourced expert-curated mineralogy database."},
+  {name:"RRUFF Project",host:"Univ. Arizona",country:"USA",disc:"Mineralogy",cur:"Full discipline-specific",pub:true,url:"https://rruff.info",r3:"r3d100010766",desc:"Mineral spectra, structures and chemistry."},
+  {name:"IODP",host:"International",country:"International",disc:"Sample & core",cur:"Full discipline-specific",pub:false,url:"https://iodp.org",r3:"r3d100010267",desc:"Ocean sub-seafloor drilling cores and data."},
+  {name:"NSF Ice Core Facility",host:"USGS / NSF",country:"USA",disc:"Sample & core",cur:"Full discipline-specific",pub:false,url:"https://icecores.org",r3:null,desc:"Meteoric ice cores."},
+  {name:"OSU Polar Rock Repository",host:"OSU",country:"USA",disc:"Sample & core",cur:"Full discipline-specific",pub:false,url:"https://prr.osu.edu",r3:null,desc:"Antarctic rock samples with metadata."},
+  {name:"OSU Marine & Geology Repository",host:"OSU",country:"USA",disc:"Sample & core",cur:"Full discipline-specific",pub:false,url:"https://osu-mgr.org",r3:null,desc:"Marine cores, rock samples, dredged material."},
+  {name:"Seafloor Samples Lab",host:"WHOI",country:"USA",disc:"Sample & core",cur:"Full discipline-specific",pub:false,url:"https://www2.whoi.edu/site/seafloorsampleslab/",r3:null,desc:"14,000+ archived marine geological samples."},
+  {name:"SESAR",host:"LDEO",country:"USA",disc:"Sample & core",cur:"Full discipline-specific",pub:true,url:"https://www.geosamples.org",r3:"r3d100010420",desc:"Global digital index of samples and specimens (IGSN)."},
+  {name:"Native Land Digital",host:"NLD",country:"Canada",disc:"Indigenous knowledge",cur:"Full discipline-specific",pub:true,url:"https://native-land.ca",r3:null,desc:"Maps of Indigenous territories, languages and treaties."},
+  {name:"Neotoma",host:"Neotoma Consortium",country:"USA",disc:"Paleoscience",cur:"Full discipline-specific",pub:true,url:"https://neotomadb.org",r3:null,desc:"Fossil, paleoecological and paleoenvironmental data."},
+  {name:"NOAA Paleoclimatology",host:"NOAA NCEI",country:"USA",disc:"Paleoscience",cur:"Full discipline-specific",pub:false,url:"https://www.ncei.noaa.gov/products/paleoclimatology",r3:"r3d100010311",desc:"Tree rings, corals, ice cores."},
+  {name:"Paleobiology Database",host:"PBDB",country:"USA",disc:"Paleoscience",cur:"Full discipline-specific",pub:false,url:"https://paleobiodb.org",r3:"r3d100010760",desc:"Collection-based occurrence and taxonomic data."},
+  {name:"Scripps CO\u2082 Program",host:"SIO / UCSD",country:"USA",disc:"Atmosphere & climate",cur:"Full discipline-specific",pub:false,url:"https://scrippsco2.ucsd.edu",r3:null,desc:"Mauna Loa Keeling Curve and global CO2 network."},
+  {name:"NOAA GML",host:"NOAA",country:"USA",disc:"Atmosphere & climate",cur:"Full discipline-specific",pub:false,url:"https://gml.noaa.gov",r3:"r3d100010966",desc:"Global Monitoring Laboratory greenhouse gases."},
+  {name:"ICOS Carbon Portal",host:"ICOS ERIC",country:"Sweden",disc:"Atmosphere & climate",cur:"Full discipline-specific",pub:true,url:"https://www.icos-cp.eu",r3:null,desc:"Integrated Carbon Observation System data."},
+  {name:"SOCAT",host:"NOAA PMEL",country:"International",disc:"Atmosphere & climate",cur:"Full discipline-specific",pub:false,url:"https://socat.info",r3:null,desc:"Surface Ocean CO2 Atlas synthesized observations."},
+  {name:"Argo GDAC",host:"Ifremer / FNMOC",country:"France",disc:"Ocean & marine",cur:"Full discipline-specific",pub:false,url:"https://argo.ucsd.edu",r3:null,desc:"Global profiling float array T/S profiles."},
+  {name:"SeaDataNet",host:"EMODnet",country:"EU",disc:"Ocean & marine",cur:"Full discipline-specific",pub:false,url:"https://www.seadatanet.org",r3:"r3d100010337",desc:"Pan-European ocean and marine data infrastructure."},
+  {name:"AODN Portal",host:"IMOS",country:"Australia",disc:"Ocean & marine",cur:"Full discipline-specific",pub:false,url:"https://portal.aodn.org.au",r3:"r3d100010914",desc:"Australian Ocean Data Network IMOS observations."},
+];
+
+const GREI = [
+  {code:"HD",name:"Harvard Dataverse",url:"https://dataverse.harvard.edu",tiers:{"<10":true,"<20":true,"<50":true,"<300":true,"<1TB":true,"1TB+":"$"}},
+  {code:"DR",name:"Dryad",url:"https://datadryad.org",tiers:{"<10":"$","<20":"$","<50":"$","<300":"$","<1TB":"$","1TB+":"$"}},
+  {code:"FI",name:"Figshare",url:"https://figshare.com",tiers:{"<10":true,"<20":true,"<50":"$","<300":"$","<1TB":"$","1TB+":"$"}},
+  {code:"MD",name:"Mendeley Data",url:"https://data.mendeley.com",tiers:{"<10":true,"<20":true,"<50":false,"<300":false,"<1TB":false,"1TB+":false}},
+  {code:"OS",name:"OSF",url:"https://osf.io",tiers:{"<10":true,"<20":true,"<50":true,"<300":"$","<1TB":"$","1TB+":"$"}},
+  {code:"VI",name:"Vivli",url:"https://vivli.org",tiers:{"<10":true,"<20":true,"<50":true,"<300":"$","<1TB":"$","1TB+":"$"}},
+  {code:"ZE",name:"Zenodo",url:"https://zenodo.org",tiers:{"<10":true,"<20":true,"<50":true,"<300":true,"<1TB":false,"1TB+":false}},
+];
+const TIERS=["<10","<20","<50","<300","<1TB","1TB+"];
+const TIER_LABELS={"<10":"<10 GB","<20":"<20 GB","<50":"<50 GB","<300":"<300 GB","<1TB":"<1 TB","1TB+":"1 TB+"};
+
+const DISC_COLORS = {
+  "Generalist":"#5F5E5A","Multidisciplinary":"#888780","Federated portal":"#534AB7",
+  "Cryosphere & polar":"#85B7EB","Ocean & marine":"#185FA5","Geophysical & geodetic":"#993C1D",
+  "Ecological & terrestrial":"#3B6D11","Biological & specimen":"#1D9E75","Mineralogy":"#854F0B",
+  "Sample & core":"#BA7517","Indigenous knowledge":"#993556","Paleoscience":"#3C3489",
+  "Atmosphere & climate":"#378ADD","Live (re3data)":"#D85A30",
+};
+
+let LIVE_REPOS = [], LIVE_TOTAL = null;
+const $ = id => document.getElementById(id);
+
+[...new Set(REPOS.map(r=>r.disc))].sort().forEach(d => {
+  const o=document.createElement("option"); o.textContent=d; $("disc").appendChild(o);
+});
+
+function badge(text, ramp){
+  const f={teal:["#E1F5EE","#085041"],blue:["#E6F1FB","#0C447C"],purple:["#EEEDFE","#3C3489"],amber:["#FAEEDA","#633806"],gray:["#F1EFE8","#444441"]};
+  const [bg,fg]=f[ramp]||f.gray;
+  return `<span style="background:${bg};color:${fg};font-size:11px;padding:2px 8px;border-radius:var(--border-radius-md);margin-right:4px;display:inline-block;">${text}</span>`;
+}
+const curRamp = {"Generalist":"gray","Moderate":"amber","Full discipline-specific":"teal"};
+
+function getActiveRepos(){
+  if (!$("livesrc").checked || !LIVE_REPOS.length) return REPOS;
+  const known = new Set(REPOS.filter(r=>r.r3).map(r=>r.r3));
+  const extras = LIVE_REPOS.filter(r => !known.has(r.r3)).map(r => ({
+    name:r.name,host:"",country:"",disc:"Live (re3data)",cur:"Generalist",pub:false,
+    url:`https://www.re3data.org/repository/${r.r3}`,r3:r.r3,desc:"Live result from re3data API."
+  }));
+  return REPOS.concat(extras);
+}
+
+function render(){
+  const qv=$("q").value.trim().toLowerCase();
+  const dv=$("disc").value, cv=$("cur").value, pubOnly=$("pub").checked;
+  const source = getActiveRepos();
+  const filtered = source.filter(r => {
+    if(dv && r.disc!==dv) return false;
+    if(cv && r.cur!==cv) return false;
+    if(pubOnly && !r.pub) return false;
+    if(qv){
+      const hay=(r.name+" "+r.host+" "+r.desc+" "+r.disc).toLowerCase();
+      if(!hay.includes(qv)) return false;
+    }
+    return true;
+  });
+
+  $("m-count").textContent = filtered.length;
+  $("m-disc").textContent = new Set(filtered.map(r=>r.disc)).size;
+  $("m-pub").textContent = filtered.filter(r=>r.pub).length;
+  $("m-r3").textContent = LIVE_TOTAL ? LIVE_TOTAL.toLocaleString() : "—";
+  $("counter").textContent = filtered.length+" of "+source.length;
+
+  $("list").innerHTML = filtered.slice(0, 200).map(r => {
+    const pubMark = r.pub ? `<span title="Publisher-accepted" style="color:var(--color-text-success);font-weight:500;margin-right:4px;">✝</span>` : "";
+    const r3 = r.r3 ? `<a href="https://www.re3data.org/repository/${r.r3}" style="font-size:12px;">re3data ↗</a>` : "";
+    const meta = [r.host, r.country].filter(Boolean).join(" · ");
+    return `<div style="background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:12px 14px;">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:4px;">
+        <div style="font-size:15px;font-weight:500;">${pubMark}${r.name}</div>
+        <div style="font-size:12px;color:var(--color-text-secondary);white-space:nowrap;">${meta}</div>
+      </div>
+      <div style="font-size:13px;color:var(--color-text-secondary);line-height:1.55;margin-bottom:8px;">${r.desc}</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+        <div>${badge(r.disc,"purple")}${badge(r.cur,curRamp[r.cur]||"gray")}</div>
+        <div style="display:flex;gap:10px;">${r.url?`<a href="${r.url}" style="font-size:12px;">site ↗</a>`:""}${r3}</div>
+      </div>
+    </div>`;
+  }).join("") || `<div style="font-size:13px;color:var(--color-text-secondary);padding:20px;text-align:center;">No matches.</div>`;
+
+  if (filtered.length > 200) {
+    $("list").innerHTML += `<div style="font-size:12px;color:var(--color-text-tertiary);padding:8px;text-align:center;">Showing first 200 of ${filtered.length}. Refine your search.</div>`;
+  }
+}
+
+["q","disc","cur"].forEach(id => $(id).addEventListener("input", render));
+$("pub").addEventListener("change", render);
+$("livesrc").addEventListener("change", render);
+
+let activeTier="<50";
+function renderTiers(){
+  $("tiers").innerHTML = TIERS.map(t => {
+    const active = t === activeTier;
+    return `<button data-tier="${t}" style="font-size:12px;padding:6px 12px;border:0.5px solid var(--color-border-secondary);background:${active?'var(--color-text-primary)':'var(--color-background-primary)'};color:${active?'var(--color-background-primary)':'var(--color-text-primary)'};border-radius:var(--border-radius-md);cursor:pointer;">${TIER_LABELS[t]}</button>`;
+  }).join("");
+  $("tiers").querySelectorAll("button").forEach(b => b.addEventListener("click", e => { activeTier = e.target.dataset.tier; renderTiers(); renderGrei(); }));
+}
+function renderGrei(){
+  $("grei-grid").innerHTML = GREI.map(g => {
+    const v = g.tiers[activeTier];
+    const supported = v === true || v === "$";
+    const fee = v === "$";
+    const status = !supported ? `<span style="font-size:11px;color:var(--color-text-tertiary);">not supported</span>` :
+      fee ? `<span style="font-size:11px;background:#FAEEDA;color:#633806;padding:2px 8px;border-radius:var(--border-radius-md);">fee $</span>` :
+      `<span style="font-size:11px;background:#E1F5EE;color:#085041;padding:2px 8px;border-radius:var(--border-radius-md);">included</span>`;
+    return `<div style="background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:12px 14px;opacity:${supported?'1':'0.45'};">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:6px;">
+        <div style="font-size:14px;font-weight:500;">${g.name}</div>
+        <div style="font-size:11px;color:var(--color-text-tertiary);">${g.code}</div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;">${status}<a href="${g.url}" style="font-size:11px;">site ↗</a></div>
+    </div>`;
+  }).join("");
+}
+
+function showTab(name){
+  ["browse","cluster","grei"].forEach(t => {
+    $("view-"+t).style.display = (t===name)?"block":"none";
+    const btn = $("tab-"+t);
+    btn.style.borderBottomColor = (t===name)?"var(--color-text-primary)":"transparent";
+    btn.style.color = (t===name)?"var(--color-text-primary)":"var(--color-text-secondary)";
+  });
+  if (name === "cluster" && !window._clusterRendered) renderCluster();
+}
+$("tab-browse").addEventListener("click", () => showTab("browse"));
+$("tab-cluster").addEventListener("click", () => showTab("cluster"));
+$("tab-grei").addEventListener("click", () => showTab("grei"));
+
+function renderCluster(){
+  window._clusterRendered = true;
+  const container = $("cluster");
+  const W = container.clientWidth, H = 560;
+  const nodes = REPOS.map((r,i) => ({...r, id:i}));
+  const links = [];
+  const byDisc = {};
+  nodes.forEach(n => { (byDisc[n.disc] = byDisc[n.disc] || []).push(n); });
+  Object.values(byDisc).forEach(group => {
+    for (let i=0; i<group.length; i++)
+      for (let j=i+1; j<group.length; j++)
+        links.push({source: group[i].id, target: group[j].id});
+  });
+
+  const usedDiscs = [...new Set(nodes.map(n=>n.disc))];
+  $("legend").innerHTML = usedDiscs.map(d =>
+    `<span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:50%;background:${DISC_COLORS[d]||'#888'};"></span><span style="color:var(--color-text-secondary);">${d}</span></span>`
+  ).join("");
+
+  const svg = d3.select(container).append("svg").attr("viewBox",`0 0 ${W} ${H}`).attr("width","100%").attr("height",H);
+  const g = svg.append("g");
+
+  const zoom = d3.zoom().scaleExtent([0.2, 5])
+    .filter(event => !event.target.matches?.("circle"))
+    .on("zoom", e => {
+      g.attr("transform", e.transform);
+      $("zoom-readout").textContent = Math.round(e.transform.k * 100) + "%";
+    });
+  svg.call(zoom);
+
+  const sim = d3.forceSimulation(nodes)
+    .force("link", d3.forceLink(links).id(d=>d.id).distance(35).strength(0.05))
+    .force("charge", d3.forceManyBody().strength(-80))
+    .force("center", d3.forceCenter(W/2, H/2))
+    .force("collide", d3.forceCollide(14));
+
+  const link = g.append("g").attr("stroke","#888780").attr("stroke-opacity",0.12)
+    .selectAll("line").data(links).join("line").attr("stroke-width",0.5);
+
+  const node = g.append("g")
+    .selectAll("circle").data(nodes).join("circle")
+    .attr("r",8).attr("fill", d => DISC_COLORS[d.disc] || "#888780")
+    .attr("stroke", "var(--color-background-secondary)").attr("stroke-width",1.5)
+    .style("cursor","pointer");
+
+  const labels = g.append("g").selectAll("text").data(nodes).join("text")
+    .text(d=>d.name).attr("font-size",9).attr("fill","var(--color-text-secondary)")
+    .attr("text-anchor","middle").attr("dy",-12).style("pointer-events","none");
+
+  node.on("mouseover", (e,d) => {
+    $("cluster-info").innerHTML = `<strong style="font-weight:500;color:var(--color-text-primary);">${d.name}</strong> · ${d.host} · ${d.country} — ${d.disc}`;
+  }).on("mouseout", () => { $("cluster-info").textContent = ""; })
+    .on("click", (e,d) => { if (d.url) window.open(d.url,"_blank"); });
+
+  node.call(d3.drag()
+    .on("start", (e,d) => { if (!e.active) sim.alphaTarget(0.3).restart(); d.fx=d.x; d.fy=d.y; })
+    .on("drag", (e,d) => { d.fx=e.x; d.fy=e.y; })
+    .on("end", (e,d) => { if (!e.active) sim.alphaTarget(0); d.fx=null; d.fy=null; }));
+
+  sim.on("tick", () => {
+    link.attr("x1",d=>d.source.x).attr("y1",d=>d.source.y).attr("x2",d=>d.target.x).attr("y2",d=>d.target.y);
+    node.attr("cx",d=>d.x).attr("cy",d=>d.y);
+    labels.attr("x",d=>d.x).attr("y",d=>d.y);
+  });
+
+  $("zoom-in").onclick = () => svg.transition().duration(250).call(zoom.scaleBy, 1.5);
+  $("zoom-out").onclick = () => svg.transition().duration(250).call(zoom.scaleBy, 1/1.5);
+  $("zoom-reset").onclick = () => svg.transition().duration(300).call(zoom.transform, d3.zoomIdentity);
+  $("zoom-fit").onclick = () => {
+    const xs = nodes.map(n=>n.x), ys = nodes.map(n=>n.y);
+    const minX=Math.min(...xs), maxX=Math.max(...xs), minY=Math.min(...ys), maxY=Math.max(...ys);
+    const dx = maxX-minX, dy = maxY-minY;
+    const scale = 0.9 / Math.max(dx/W, dy/H);
+    const tx = W/2 - scale * (minX+maxX)/2;
+    const ty = H/2 - scale * (minY+maxY)/2;
+    svg.transition().duration(400).call(zoom.transform, d3.zoomIdentity.translate(tx,ty).scale(scale));
+  };
+}
+
+const PROXIES = [
+  url => url,
+  url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+  url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+];
+const PROXY_LABELS = ["direct", "allorigins.win", "corsproxy.io"];
+
+async function fetchLive(){
+  const target = "https://www.re3data.org/api/v1/repositories";
+  $("live-dot").style.background = "#EF9F27";
+  for (let i=0; i<PROXIES.length; i++) {
+    $("live-text").textContent = `Trying ${PROXY_LABELS[i]}…`;
+    try {
+      const res = await fetch(PROXIES[i](target));
+      if (!res.ok) throw new Error("HTTP "+res.status);
+      const text = await res.text();
+      const xml = new DOMParser().parseFromString(text, "text/xml");
+      const repos = [...xml.querySelectorAll("repository")].map(el => ({
+        r3: el.querySelector("id")?.textContent.trim(),
+        name: el.querySelector("n")?.textContent.trim(),
+      })).filter(r => r.r3 && r.name);
+      if (!repos.length) throw new Error("empty parse");
+      LIVE_REPOS = repos;
+      LIVE_TOTAL = repos.length;
+      $("live-dot").style.background = "#1D9E75";
+      $("live-text").innerHTML = `Live · ${repos.length.toLocaleString()} repositories via <code>${PROXY_LABELS[i]}</code>. <span style="color:var(--color-text-tertiary);">Toggle "Include live re3data results" to merge.</span>`;
+      render();
+      return;
+    } catch (err) { continue; }
+  }
+  $("live-dot").style.background = "#E24B4A";
+  $("live-text").innerHTML = `All proxies failed. Using curated cached set. <span style="color:var(--color-text-tertiary);">re3data has ~3,200 repositories total.</span>`;
+  LIVE_TOTAL = 3200;
+  render();
+}
+$("live-retry").addEventListener("click", fetchLive);
+
+render();
+renderTiers();
+renderGrei();
+fetchLive();
+</script>
+</body>
+</html>
