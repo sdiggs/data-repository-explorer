@@ -53,15 +53,18 @@ html{font-family:var(--font);background:var(--bg);color:var(--text);-webkit-font
 .gc button.on{background:rgba(255,255,255,0.22);color:#fff;border-color:rgba(255,255,255,0.35);}
 .zr{position:absolute;bottom:10px;left:12px;font-size:11px;font-family:var(--mono);color:rgba(255,255,255,0.35);}
 .nc{position:absolute;bottom:10px;right:12px;font-size:11px;font-family:var(--mono);color:rgba(255,255,255,0.35);}
-.dp{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:16px 20px;margin-bottom:12px;display:none;}
-.dp.vis{display:block;}
-.dp h3{font-size:16px;font-weight:600;margin-bottom:4px;}
-.dp .dm{font-size:13px;color:var(--text-2);margin-bottom:8px;}
-.dp .dd{font-size:13px;color:var(--text-2);line-height:1.6;margin-bottom:10px;}
-.dp .db{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
-.dp .dl{display:flex;gap:12px;font-size:12px;}
-.dp .dl a{color:var(--accent);text-decoration:none;}
-.dp .dl a:hover{text-decoration:underline;}
+.tip{display:none;position:absolute;pointer-events:none;background:rgba(8,8,12,0.92);border:1px solid rgba(255,255,255,0.15);border-radius:10px;padding:12px 14px;max-width:320px;backdrop-filter:blur(8px);z-index:10;}
+.tip-name{font-size:14px;font-weight:600;color:#f1efe8;margin-bottom:3px;}
+.tip-meta{font-size:11px;color:rgba(255,255,255,0.5);margin-bottom:6px;}
+.tip-desc{font-size:11px;color:rgba(255,255,255,0.65);line-height:1.5;margin-bottom:8px;}
+.tip-badges{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;}
+.tip-badge{padding:2px 8px;font-size:9px;font-weight:500;border-radius:100px;}
+.tip-links{display:flex;gap:10px;font-size:10px;}
+.tip-links a{color:#85B7EB;text-decoration:none;pointer-events:auto;}
+.tip-links a:hover{text-decoration:underline;}
+.mode-tag{position:absolute;top:10px;left:12px;font-size:10px;font-family:var(--mono);padding:4px 10px;border-radius:6px;background:rgba(186,117,23,0.25);color:#EF9F27;border:1px solid rgba(186,117,23,0.35);display:none;}
+.mode-tag.vis{display:block;}
+
 .mets{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:12px;}
 .met{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;}
 .met-l{font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px;}
@@ -106,11 +109,19 @@ select{padding:9px 12px;font-size:13px;font-family:var(--font);border:1px solid 
       <button id="zx" title="Reset">↺</button>
       <button id="tl" title="Toggle connections" class="on">⬡</button>
       <button id="ta" title="Toggle labels" class="on">A</button>
+      <button id="tc" title="Louvain communities">◎</button>
     </div>
+    <div class="tip" id="tip">
+      <div class="tip-name" id="tn"></div>
+      <div class="tip-meta" id="tm"></div>
+      <div class="tip-badges" id="tb"></div>
+      <div class="tip-desc" id="td"></div>
+      <div class="tip-links" id="ti"></div>
+    </div>
+    <div class="mode-tag" id="mt">Louvain communities</div>
     <div class="zr" id="zrd">100%</div>
     <div class="nc" id="ncn"></div>
   </div>
-  <div class="dp" id="dp"><h3 id="dn"></h3><div class="dm" id="dmt"></div><div class="dd" id="dde"></div><div class="db" id="dba"></div><div class="dl" id="dlk"></div></div>
 </div>
 
 <div id="vb">
@@ -310,8 +321,8 @@ function bg_(){
   const laG=g.append("g");
   let laE=laG.selectAll("text").data(nodes).join("text").text(d=>d.name).attr("font-size",8.5).attr("font-family","'DM Sans',sans-serif").attr("fill","rgba(255,255,255,0.55)").attr("text-anchor","middle").attr("dy",-14).style("pointer-events","none");
   laG.style("display",sA?null:"none");
-  ndE.on("mouseover",function(e,d){d3.select(this).attr("r",d.cts?14:10).style("filter","drop-shadow(0 0 8px rgba(255,255,255,0.35))");sd(d);}).on("mouseout",function(e,d){d3.select(this).attr("r",d.cts?10:7).style("filter","drop-shadow(0 0 3px rgba(255,255,255,0.12))");}).on("click",(e,d)=>{if(d.url)window.open(d.url,"_blank");});
-  ndE.call(d3.drag().on("start",(e,d)=>{if(!e.active)sim.alphaTarget(0.3).restart();d.fx=d.x;d.fy=d.y;}).on("drag",(e,d)=>{d.fx=e.x;d.fy=e.y;}).on("end",(e,d)=>{if(!e.active)sim.alphaTarget(0);d.fx=null;d.fy=null;}));
+  ndE.on("mouseover",function(e,d){d3.select(this).attr("r",d.cts?14:10).style("filter","drop-shadow(0 0 8px rgba(255,255,255,0.35))");showTip(d);}).on("mousemove",function(e){moveTip(e);}).on("mouseout",function(e,d){d3.select(this).attr("r",d.cts?10:7).style("filter","drop-shadow(0 0 3px rgba(255,255,255,0.12))");hideTip();}).on("click",(e,d)=>{if(d.url)window.open(d.url,"_blank");});
+  ndE.call(d3.drag().on("start",(e,d)=>{if(!e.active)sim.alphaTarget(0.3).restart();d.fx=d.x;d.fy=d.y;hideTip();}).on("drag",(e,d)=>{d.fx=e.x;d.fy=e.y;}).on("end",(e,d)=>{if(!e.active)sim.alphaTarget(0);d.fx=null;d.fy=null;}));
   sim.on("tick",()=>{lkE.attr("x1",d=>d.source.x).attr("y1",d=>d.source.y).attr("x2",d=>d.target.x).attr("y2",d=>d.target.y);ndE.attr("cx",d=>d.x).attr("cy",d=>d.y);laE.attr("x",d=>d.x).attr("y",d=>d.y);});
   $("zi").onclick=()=>svg.transition().duration(200).call(zm.scaleBy,1.5);
   $("zo").onclick=()=>svg.transition().duration(200).call(zm.scaleBy,1/1.5);
@@ -320,21 +331,91 @@ function bg_(){
   $("tl").onclick=function(){sL=!sL;lkG.style("display",sL?null:"none");this.classList.toggle("on",sL);};
   $("ta").onclick=function(){sA=!sA;laG.style("display",sA?null:"none");this.classList.toggle("on",sA);};
   $("gs").oninput=function(){const q=this.value.trim().toLowerCase();ndE.attr("opacity",d=>!q||(d.name+" "+d.host+" "+d.disc).toLowerCase().includes(q)?1:0.1);laE.attr("fill-opacity",d=>!q||(d.name+" "+d.host+" "+d.disc).toLowerCase().includes(q)?1:0.1);};
+
+  // Louvain community detection
+  const COMM_COLORS=["#EF9F27","#378ADD","#1D9E75","#D85A30","#7F77DD","#D4537E","#639922","#85B7EB","#BA7517","#888780","#E24B4A","#5DCAA5","#534AB7","#993C1D"];
+  let louMode=false;
+  function louvain(ns,ls){
+    const N=ns.length;
+    const adj=Array.from({length:N},()=>[]);
+    ls.forEach(l=>{const s=typeof l.source==="object"?l.source.id:l.source;const t=typeof l.target==="object"?l.target.id:l.target;adj[s].push(t);adj[t].push(s);});
+    const comm=Array.from({length:N},(_,i)=>i);
+    const m=ls.length||1;
+    const deg=adj.map(a=>a.length);
+    let improved=true;let iter=0;
+    while(improved&&iter<20){improved=false;iter++;
+      for(let i=0;i<N;i++){
+        const ci=comm[i];
+        const neighborComms={};
+        adj[i].forEach(j=>{const cj=comm[j];neighborComms[cj]=(neighborComms[cj]||0)+1;});
+        let bestC=ci,bestDQ=0;
+        const ki=deg[i];
+        for(const[c,ec] of Object.entries(neighborComms)){
+          const cn=+c;if(cn===ci)continue;
+          const sumIn=ns.filter((_,k)=>comm[k]===cn).reduce((s,_,_2,a)=>s+deg[ns.indexOf(a[_2])],0);
+          const dq=ec/m-ki*sumIn/(2*m*m);
+          if(dq>bestDQ){bestDQ=dq;bestC=cn;}
+        }
+        if(bestC!==ci){comm[i]=bestC;improved=true;}
+      }
+    }
+    const unique=[...new Set(comm)];
+    const remap={};unique.forEach((c,i)=>remap[c]=i);
+    return comm.map(c=>remap[c]);
+  }
+
+  $("tc").onclick=function(){
+    louMode=!louMode;
+    this.classList.toggle("on",louMode);
+    $("mt").classList.toggle("vis",louMode);
+    if(louMode){
+      const comms=louvain(nodes,links);
+      const nc=new Set(comms).size;
+      $("mt").textContent="Louvain: "+nc+" communities";
+      ndE.transition().duration(400)
+        .attr("fill",d=>COMM_COLORS[comms[d.id]%COMM_COLORS.length])
+        .attr("stroke",d=>COMM_COLORS[comms[d.id]%COMM_COLORS.length]);
+      lkE.transition().duration(400)
+        .attr("stroke",d=>{const si=typeof d.source==="object"?d.source.id:d.source;const ti=typeof d.target==="object"?d.target.id:d.target;return comms[si]===comms[ti]?COMM_COLORS[comms[si]%COMM_COLORS.length]:"rgba(255,255,255,0.04)";})
+        .attr("stroke-opacity",d=>{const si=typeof d.source==="object"?d.source.id:d.source;const ti=typeof d.target==="object"?d.target.id:d.target;return comms[si]===comms[ti]?0.25:0.04;});
+    } else {
+      ndE.transition().duration(400)
+        .attr("fill",d=>"url(#g_"+d.disc.replace(/[^a-zA-Z0-9]/g,"_")+")")
+        .attr("stroke",d=>(DC[d.disc]||["#888"])[0]);
+      lkE.transition().duration(400).attr("stroke","rgba(255,255,255,0.06)").attr("stroke-opacity",0.5);
+    }
+  };
 }
 
-function sd(d){
-  const p=$("dp");p.classList.add("vis");
-  $("dn").textContent=d.name;
-  const parts=[d.host,d.country].filter(Boolean);if(d.rstar)parts.push("R* "+d.rstar);
-  $("dmt").textContent=parts.join(" · ");$("dde").textContent=d.desc;
-  const[bg,fg]=DB[d.disc]||["#F1EFE8","#444441"];
-  let b=`<span class="badge" style="background:${bg};color:${fg};">${d.disc}</span>`;
-  if(d.cts)b+=`<span class="badge" style="background:#E1F5EE;color:#085041;">CoreTrustSeal</span>`;
-  if(d.pub)b+=`<span class="badge" style="background:#E6F1FB;color:#0C447C;">Publisher ✝</span>`;
-  $("dba").innerHTML=b;
-  let lk="";if(d.url)lk+=`<a href="${d.url}" target="_blank">Website ↗</a>`;if(d.r3)lk+=`<a href="https://www.re3data.org/repository/${d.r3}" target="_blank">re3data ↗</a>`;if(d.ror)lk+=`<a href="${d.ror}" target="_blank">ROR ↗</a>`;
-  $("dlk").innerHTML=lk;
+function showTip(d){
+  const t=$("tip");t.style.display="block";
+  $("tn").textContent=d.name;
+  const parts=[d.host,d.country].filter(Boolean);
+  if(d.rstar)parts.push("R* "+d.rstar);
+  $("tm").textContent=parts.join(" · ");
+  $("td").textContent=d.desc;
+  const[bg,fg]=DB[d.disc]||["rgba(255,255,255,0.1)","#ccc"];
+  let b=`<span class="tip-badge" style="background:${bg};color:${fg};">${d.disc}</span>`;
+  if(d.cts)b+=`<span class="tip-badge" style="background:rgba(29,158,117,0.2);color:#5DCAA5;">CoreTrustSeal</span>`;
+  if(d.pub)b+=`<span class="tip-badge" style="background:rgba(55,138,221,0.2);color:#85B7EB;">Publisher ✝</span>`;
+  $("tb").innerHTML=b;
+  let lk="";
+  if(d.url)lk+=`<a href="${d.url}" target="_blank">site ↗</a>`;
+  if(d.r3)lk+=`<a href="https://www.re3data.org/repository/${d.r3}" target="_blank">re3data ↗</a>`;
+  if(d.ror)lk+=`<a href="${d.ror}" target="_blank">ROR ↗</a>`;
+  $("ti").innerHTML=lk;
 }
+function moveTip(e){
+  const t=$("tip"),gw=t.parentElement;
+  const rect=gw.getBoundingClientRect();
+  let x=e.clientX-rect.left+15;
+  let y=e.clientY-rect.top+15;
+  if(x+330>rect.width)x=e.clientX-rect.left-335;
+  if(y+200>rect.height)y=e.clientY-rect.top-200;
+  if(x<0)x=10;if(y<0)y=10;
+  t.style.left=x+"px";t.style.top=y+"px";
+}
+function hideTip(){$("tip").style.display="none";}
 
 function ar(){if(!$("lf").checked||!LR.length)return R;const k=new Set(R.filter(r=>r.r3).map(r=>r.r3));return R.concat(LR.filter(r=>!k.has(r.r3)).map(r=>({name:r.name,host:"",country:"",disc:"Live (re3data)",cur:"Generalist",pub:false,cts:false,url:"https://www.re3data.org/repository/"+r.r3,r3:r.r3,desc:"Live result from re3data API."})));}
 function rb(){
