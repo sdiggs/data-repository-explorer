@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Data Repository Explorer</title>
+<meta name="description" content="Interactive explorer for research data repositories — live re3data, ESIP catalog, GREI generalists, force-directed cluster view.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f5f3ed;
+  --surface: #ffffff;
+  --surface-alt: #eae8e1;
+  --text: #1a1a18;
+  --text-2: #6b6a65;
+  --text-3: #9d9c97;
+  --border: rgba(0,0,0,0.08);
+  --border-h: rgba(0,0,0,0.16);
+  --accent: #185FA5;
+  --font: 'DM Sans', system-ui, sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, monospace;
+  --r: 10px;
+  --rl: 14px;
+}
+*{box-sizing:border-box;margin:0;}
+html{font-family:var(--font);background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;}
+.page{max-width:1200px;margin:0 auto;padding:1.5rem 1.25rem 3rem;}
+.hdr{display:flex;align-items:flex-end;justify-content:space-between;gap:1rem;margin-bottom:1rem;flex-wrap:wrap;}
+.hdr h1{font-size:20px;font-weight:600;letter-spacing:-0.3px;}
+.hdr-sub{font-size:12px;color:var(--text-2);margin-top:2px;}
+.hdr-links{display:flex;gap:12px;font-size:12px;}
+.hdr-links a{color:var(--text-2);text-decoration:none;border-bottom:1px solid var(--border);}
+.hdr-links a:hover{color:var(--text);border-color:var(--text);}
+.sbar{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-2);padding:8px 14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);margin-bottom:12px;}
+.sdot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.tabs{display:flex;gap:2px;margin-bottom:12px;background:var(--surface-alt);border-radius:var(--r);padding:3px;width:fit-content;}
+.tbtn{border:none;background:none;padding:7px 16px;font-size:13px;font-family:var(--font);font-weight:500;color:var(--text-2);border-radius:8px;cursor:pointer;transition:all 120ms;}
+.tbtn.on{background:var(--surface);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,0.06);}
+.sb{display:flex;gap:8px;margin-bottom:10px;}
+.sb input{flex:1;padding:9px 14px;font-size:13px;font-family:var(--font);border:1px solid var(--border);border-radius:var(--r);background:var(--surface);color:var(--text);outline:none;transition:border 120ms;}
+.sb input:focus{border-color:var(--accent);}
+.sb input::placeholder{color:var(--text-3);}
+.pills{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;}
+.pill{padding:5px 12px;font-size:11px;font-family:var(--font);font-weight:500;border:none;border-radius:100px;cursor:pointer;transition:all 100ms;opacity:0.35;color:#fff;}
+.pill.on{opacity:1;}
+.pill:hover{opacity:0.85;}
+.gw{position:relative;width:100%;border-radius:var(--rl);overflow:hidden;margin-bottom:10px;}
+#gc{width:100%;height:600px;background:#0a0a0f;display:block;}
+.gc{position:absolute;top:10px;right:10px;display:flex;flex-direction:column;gap:4px;}
+.gc button{width:30px;height:30px;padding:0;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.06);color:#ccc;font-size:14px;font-family:var(--mono);border-radius:6px;cursor:pointer;backdrop-filter:blur(4px);transition:all 100ms;display:flex;align-items:center;justify-content:center;}
+.gc button:hover{background:rgba(255,255,255,0.14);color:#fff;}
+.gc button.on{background:rgba(255,255,255,0.22);color:#fff;border-color:rgba(255,255,255,0.35);}
+.zr{position:absolute;bottom:10px;left:12px;font-size:11px;font-family:var(--mono);color:rgba(255,255,255,0.35);}
+.nc{position:absolute;bottom:10px;right:12px;font-size:11px;font-family:var(--mono);color:rgba(255,255,255,0.35);}
+.dp{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:16px 20px;margin-bottom:12px;display:none;}
+.dp.vis{display:block;}
+.dp h3{font-size:16px;font-weight:600;margin-bottom:4px;}
+.dp .dm{font-size:13px;color:var(--text-2);margin-bottom:8px;}
+.dp .dd{font-size:13px;color:var(--text-2);line-height:1.6;margin-bottom:10px;}
+.dp .db{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
+.dp .dl{display:flex;gap:12px;font-size:12px;}
+.dp .dl a{color:var(--accent);text-decoration:none;}
+.dp .dl a:hover{text-decoration:underline;}
+.mets{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:12px;}
+.met{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;}
+.met-l{font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px;}
+.met-v{font-size:22px;font-weight:600;font-family:var(--mono);}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:14px 16px;transition:border-color 120ms;}
+.card:hover{border-color:var(--border-h);}
+.badge{display:inline-block;padding:3px 10px;font-size:10px;font-weight:500;border-radius:100px;}
+#list{display:flex;flex-direction:column;gap:8px;}
+#vb,#vg{display:none;}
+.gi{font-size:13px;color:var(--text-2);line-height:1.6;margin-bottom:14px;}
+.tb{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;}
+.tbn{padding:6px 14px;font-size:12px;font-family:var(--font);font-weight:500;border:1px solid var(--border);background:var(--surface);color:var(--text-2);border-radius:var(--r);cursor:pointer;transition:all 100ms;}
+.tbn.on{background:var(--text);color:var(--surface);border-color:var(--text);}
+#gg{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;}
+.ftr{margin-top:2rem;padding-top:1rem;border-top:1px solid var(--border);font-size:12px;color:var(--text-3);display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;}
+.ftr a{color:var(--text-2);text-decoration:none;}
+select{padding:9px 12px;font-size:13px;font-family:var(--font);border:1px solid var(--border);border-radius:var(--r);background:var(--surface);color:var(--text);min-width:150px;}
+</style>
+</head>
+<body>
+<div class="page">
+<div class="hdr">
+  <div><h1>Data repository explorer</h1><div class="hdr-sub">Live re3data snapshot · ESIP Data Help Desk · GREI generalists · PO.DAAC KG</div></div>
+  <div class="hdr-links"><a href="https://www.re3data.org">re3data.org</a><a href="https://doi.org/10.17616/R3D">cite re3data</a></div>
+</div>
+<div class="sbar"><span class="sdot" id="ld" style="background:#9d9c97;"></span><span id="lt">Loading…</span></div>
+<div class="tabs">
+  <button class="tbtn on" id="t1">Graph</button>
+  <button class="tbtn" id="t2">Browse</button>
+  <button class="tbtn" id="t3">GREI picker</button>
+</div>
+
+<div id="vr">
+  <div class="sb"><input id="gs" type="text" placeholder="Search nodes… type to highlight" /></div>
+  <div class="pills" id="pp"></div>
+  <div class="gw">
+    <svg id="gc"></svg>
+    <div class="gc">
+      <button id="zi" title="Zoom in">+</button>
+      <button id="zo" title="Zoom out">−</button>
+      <button id="zf" title="Fit all">⊞</button>
+      <button id="zx" title="Reset">↺</button>
+      <button id="tl" title="Toggle connections" class="on">⬡</button>
+      <button id="ta" title="Toggle labels" class="on">A</button>
+    </div>
+    <div class="zr" id="zrd">100%</div>
+    <div class="nc" id="ncn"></div>
+  </div>
+  <div class="dp" id="dp"><h3 id="dn"></h3><div class="dm" id="dmt"></div><div class="dd" id="dde"></div><div class="db" id="dba"></div><div class="dl" id="dlk"></div></div>
+</div>
+
+<div id="vb">
+  <div class="sb" style="margin-bottom:10px;">
+    <input id="q" type="text" placeholder="Search name, host, keyword…" />
+    <select id="df"><option value="">All disciplines</option></select>
+    <select id="cf"><option value="">All curation levels</option><option>Generalist</option><option>Moderate</option><option>Full discipline-specific</option></select>
+  </div>
+  <div style="display:flex;gap:14px;align-items:center;margin-bottom:12px;font-size:13px;">
+    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="pf" /> Publisher-accepted (✝)</label>
+    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="lf" /> Include live re3data</label>
+    <span style="color:var(--text-2);margin-left:auto;" id="bc">—</span>
+  </div>
+  <div class="mets">
+    <div class="met"><div class="met-l">Showing</div><div class="met-v" id="mc">—</div></div>
+    <div class="met"><div class="met-l">Disciplines</div><div class="met-v" id="md">—</div></div>
+    <div class="met"><div class="met-l">Publisher ✝</div><div class="met-v" id="mp">—</div></div>
+    <div class="met"><div class="met-l">Re3data total</div><div class="met-v" id="mr">—</div></div>
+  </div>
+  <div id="list"></div>
+</div>
+
+<div id="vg">
+  <div class="gi">The seven GREI generalists share DOIs, versioning, embargo, Make Data Count metrics, and FAIR compliance. Pick a size tier — <strong>$</strong> means available for an additional fee.</div>
+  <div class="tb" id="trs"></div>
+  <div id="gg"></div>
+  <div style="margin-top:14px;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);font-size:12px;color:var(--text-2);line-height:1.7;">
+    <strong style="color:var(--text);">Curation:</strong> Dryad includes curation as standard. Harvard Dataverse, Mendeley Data, and OSF offer it for an additional fee.
+    <strong style="color:var(--text);">Managed access:</strong> Vivli offers repository-managed; Harvard Dataverse, Figshare, Mendeley Data, OSF, and Zenodo offer user-managed; Dryad ($) and Mendeley Data offer peer-review-only.
+  </div>
+</div>
+
+<footer class="ftr"><div>Sources: <a href="https://www.re3data.org">re3data.org</a> · ESIP Data Help Desk · GREI · PO.DAAC KG</div><div>Built by <a href="https://sdiggs.github.io">Stephen C. Diggs</a></div></footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<script>
+const DC={
+  "Generalist":["#888780","#b8b7b2"],"Multidisciplinary":["#888780","#b8b7b2"],
+  "Federated portal":["#7F77DD","#AFA9EC"],"Cryosphere & polar":["#85B7EB","#B5D4F4"],
+  "Ocean & marine":["#378ADD","#85B7EB"],"Geophysical & geodetic":["#D85A30","#F0997B"],
+  "Ecological & terrestrial":["#639922","#97C459"],"Biological & specimen":["#1D9E75","#5DCAA5"],
+  "Mineralogy":["#BA7517","#EF9F27"],"Sample & core":["#EF9F27","#FAC775"],
+  "Indigenous knowledge":["#D4537E","#ED93B1"],"Paleoscience":["#7F77DD","#AFA9EC"],
+  "Atmosphere & climate":["#378ADD","#85B7EB"],"Live (re3data)":["#D85A30","#F0997B"],
+};
+const DB={
+  "Generalist":["#F1EFE8","#444441"],"Multidisciplinary":["#F1EFE8","#444441"],
+  "Federated portal":["#EEEDFE","#3C3489"],"Cryosphere & polar":["#E6F1FB","#0C447C"],
+  "Ocean & marine":["#E6F1FB","#0C447C"],"Geophysical & geodetic":["#FAECE7","#712B13"],
+  "Ecological & terrestrial":["#EAF3DE","#27500A"],"Biological & specimen":["#E1F5EE","#085041"],
+  "Mineralogy":["#FAEEDA","#633806"],"Sample & core":["#FAEEDA","#633806"],
+  "Indigenous knowledge":["#FBEAF0","#72243E"],"Paleoscience":["#EEEDFE","#3C3489"],
+  "Atmosphere & climate":["#E6F1FB","#0C447C"],"Live (re3data)":["#FAECE7","#712B13"],
+};
+const R=[
+  {name:"Zenodo",host:"CERN",country:"Switzerland",disc:"Generalist",cur:"Generalist",pub:true,url:"https://zenodo.org",r3:"r3d100010468",desc:"General-purpose open repository; DOIs for any research output.",cts:true},
+  {name:"Dryad",host:"Dryad / DataONE",country:"USA",disc:"Generalist",cur:"Generalist",pub:true,url:"https://datadryad.org",r3:"r3d100000044",desc:"Curated general-purpose repository for data underlying publications.",cts:true},
+  {name:"OSF",host:"COS",country:"USA",disc:"Generalist",cur:"Generalist",pub:true,url:"https://osf.io",r3:"r3d100011137",desc:"Project lifecycle collaboration tool with PIDs.",cts:false},
+  {name:"Harvard Dataverse",host:"Harvard IQSS",country:"USA",disc:"Generalist",cur:"Generalist",pub:false,url:"https://dataverse.harvard.edu",r3:"r3d100010051",desc:"Open research data repository at Harvard.",cts:true},
+  {name:"Figshare",host:"Digital Science",country:"UK",disc:"Generalist",cur:"Generalist",pub:false,url:"https://figshare.com",r3:"r3d100010216",desc:"Generalist repository; institutional and individual deposits.",cts:true},
+  {name:"Mendeley Data",host:"Elsevier",country:"Netherlands",disc:"Generalist",cur:"Generalist",pub:false,url:"https://data.mendeley.com",r3:"r3d100011868",desc:"Generalist repository for research data.",cts:false},
+  {name:"Vivli",host:"Vivli",country:"USA",disc:"Generalist",cur:"Generalist",pub:false,url:"https://vivli.org",r3:null,desc:"Generalist with managed access for clinical and sensitive data.",cts:false},
+  {name:"PANGAEA",host:"AWI / MARUM",country:"Germany",disc:"Multidisciplinary",cur:"Moderate",pub:true,url:"https://www.pangaea.de",r3:"r3d100010134",desc:"Earth and environmental science data publisher.",cts:true},
+  {name:"DataCite Commons",host:"DataCite",country:"Germany",disc:"Multidisciplinary",cur:"Moderate",pub:false,url:"https://commons.datacite.org",r3:null,desc:"Discovery across DataCite DOI metadata.",cts:false},
+  {name:"Ag Data Commons",host:"USDA",country:"USA",disc:"Federated portal",cur:"Full discipline-specific",pub:true,url:"https://agdatacommons.nal.usda.gov",r3:"r3d100012527",desc:"USDA agricultural research data catalog.",cts:false},
+  {name:"Earthdata",host:"NASA",country:"USA",disc:"Federated portal",cur:"Full discipline-specific",pub:false,url:"https://www.earthdata.nasa.gov",r3:null,desc:"NASA Earth science data portal.",cts:false},
+  {name:"NCAR",host:"UCAR",country:"USA",disc:"Federated portal",cur:"Full discipline-specific",pub:false,url:"https://ncar.ucar.edu",r3:"r3d100010791",desc:"Atmospheric, ocean and meteorology observations.",cts:false},
+  {name:"NOAA NCEI",host:"NOAA",country:"USA",disc:"Federated portal",cur:"Full discipline-specific",pub:true,url:"https://www.ncei.noaa.gov",r3:"r3d100011143",desc:"Gateway to NOAA environmental data including World Ocean Database.",cts:true},
+  {name:"USGS ScienceBase",host:"USGS",country:"USA",disc:"Federated portal",cur:"Full discipline-specific",pub:false,url:"https://www.sciencebase.gov",r3:"r3d100011546",desc:"Digital repository for USGS scientific data.",cts:false},
+  {name:"NASA PO.DAAC",host:"JPL / NASA",country:"USA",disc:"Ocean & marine",cur:"Full discipline-specific",pub:false,url:"https://www.earthdata.nasa.gov/centers/po-daac",r3:"r3d100010505",desc:"Physical Oceanography DAAC — satellite and in situ ocean and hydrology data including sea level, SST, salinity, winds, gravity, and surface water. CoreTrustSeal certified, WDS Regular Member. R* 21.5.",cts:true,ror:"https://ror.org/027k65916",rstar:21.5},
+  {name:"NSIDC",host:"NSIDC / NASA",country:"USA",disc:"Cryosphere & polar",cur:"Full discipline-specific",pub:true,url:"https://nsidc.org",r3:"r3d100010110",desc:"Snow, ice and cryospheric data; NASA EOSDIS DAAC.",cts:true},
+  {name:"USAP-DC",host:"LDEO",country:"USA",disc:"Cryosphere & polar",cur:"Full discipline-specific",pub:true,url:"https://www.usap-dc.org",r3:"r3d100010660",desc:"NSF US Antarctic Program datasets.",cts:false},
+  {name:"BCO-DMO",host:"WHOI",country:"USA",disc:"Ocean & marine",cur:"Full discipline-specific",pub:true,url:"https://www.bco-dmo.org",r3:"r3d100000012",desc:"Bio and chem oceanography data; NSF OCE-funded.",cts:true},
+  {name:"CCHDO",host:"SIO / UCSD",country:"USA",disc:"Ocean & marine",cur:"Full discipline-specific",pub:true,url:"https://cchdo.ucsd.edu",r3:"r3d100010831",desc:"WOCE/GO-SHIP repeat hydrography data office.",cts:false},
+  {name:"MGDS",host:"LDEO",country:"USA",disc:"Ocean & marine",cur:"Full discipline-specific",pub:true,url:"https://www.marine-geo.org",r3:"r3d100010273",desc:"Marine geophysical and bathymetric data.",cts:false},
+  {name:"Argo GDAC",host:"Ifremer / FNMOC",country:"France",disc:"Ocean & marine",cur:"Full discipline-specific",pub:false,url:"https://argo.ucsd.edu",r3:null,desc:"Global profiling float array T/S profiles.",cts:false},
+  {name:"SeaDataNet",host:"EMODnet",country:"EU",disc:"Ocean & marine",cur:"Full discipline-specific",pub:false,url:"https://www.seadatanet.org",r3:"r3d100010337",desc:"Pan-European ocean and marine data infrastructure.",cts:false},
+  {name:"AODN Portal",host:"IMOS",country:"Australia",disc:"Ocean & marine",cur:"Full discipline-specific",pub:false,url:"https://portal.aodn.org.au",r3:"r3d100010914",desc:"Australian Ocean Data Network IMOS observations.",cts:false},
+  {name:"EarthChem",host:"LDEO",country:"USA",disc:"Geophysical & geodetic",cur:"Full discipline-specific",pub:true,url:"https://www.earthchem.org",r3:"r3d100010412",desc:"Geochemical, geochronological and mineralogical data.",cts:false},
+  {name:"GAGE / UNAVCO",host:"EarthScope",country:"USA",disc:"Geophysical & geodetic",cur:"Full discipline-specific",pub:false,url:"https://www.unavco.org",r3:"r3d100010872",desc:"Geodetic data for Earth surface motion.",cts:false},
+  {name:"OpenTopography",host:"SDSC / UCSD",country:"USA",disc:"Geophysical & geodetic",cur:"Full discipline-specific",pub:true,url:"https://opentopography.org",r3:"r3d100010655",desc:"High-resolution topographic data and tools.",cts:true},
+  {name:"SAGE / IRIS",host:"EarthScope",country:"USA",disc:"Geophysical & geodetic",cur:"Full discipline-specific",pub:true,url:"https://www.iris.edu",r3:"r3d100010268",desc:"Seismological and related geophysical data.",cts:true},
+  {name:"EDI",host:"UNM / UW-Madison",country:"USA",disc:"Ecological & terrestrial",cur:"Full discipline-specific",pub:true,url:"https://edirepository.org",r3:"r3d100010272",desc:"Primary LTER ecological and environmental data repository.",cts:true},
+  {name:"ESS-DIVE",host:"LBNL / DOE",country:"USA",disc:"Ecological & terrestrial",cur:"Full discipline-specific",pub:true,url:"https://ess-dive.lbl.gov",r3:"r3d100000019",desc:"DOE BER environmental systems science data.",cts:false},
+  {name:"HydroShare",host:"CUAHSI",country:"USA",disc:"Ecological & terrestrial",cur:"Full discipline-specific",pub:true,url:"https://www.hydroshare.org",r3:"r3d100010082",desc:"Hydrologic data and models.",cts:false},
+  {name:"KNB",host:"NCEAS / UCSB",country:"USA",disc:"Ecological & terrestrial",cur:"Full discipline-specific",pub:true,url:"https://knb.ecoinformatics.org",r3:"r3d100010092",desc:"Ecological data, primarily NCEAS working groups.",cts:false},
+  {name:"Water Quality Portal",host:"USGS / EPA",country:"USA",disc:"Ecological & terrestrial",cur:"Full discipline-specific",pub:true,url:"https://www.waterqualitydata.us",r3:null,desc:"NWIS and EPA WQX water quality data.",cts:false},
+  {name:"GenBank",host:"NCBI / NIH",country:"USA",disc:"Biological & specimen",cur:"Full discipline-specific",pub:true,url:"https://www.ncbi.nlm.nih.gov/genbank",r3:"r3d100010528",desc:"Annotated NIH DNA sequence collection.",cts:false},
+  {name:"GBIF",host:"GBIF Secretariat",country:"Denmark",disc:"Biological & specimen",cur:"Full discipline-specific",pub:true,url:"https://www.gbif.org",r3:"r3d100000039",desc:"Global biodiversity occurrence data.",cts:true},
+  {name:"OBIS",host:"IOC-UNESCO / IODE",country:"Belgium",disc:"Biological & specimen",cur:"Full discipline-specific",pub:true,url:"https://obis.org",r3:"r3d100010088",desc:"Ocean Biodiversity Information System.",cts:false},
+  {name:"Movebank",host:"MPI Animal Behavior",country:"Germany",disc:"Biological & specimen",cur:"Full discipline-specific",pub:true,url:"https://datarepository.movebank.org",r3:"r3d100010469",desc:"Animal tracking and animal-borne sensor data.",cts:false},
+  {name:"SESAR",host:"LDEO",country:"USA",disc:"Sample & core",cur:"Full discipline-specific",pub:true,url:"https://www.geosamples.org",r3:"r3d100010420",desc:"Global digital index of samples and specimens (IGSN).",cts:false},
+  {name:"IODP",host:"International",country:"International",disc:"Sample & core",cur:"Full discipline-specific",pub:false,url:"https://iodp.org",r3:"r3d100010267",desc:"Ocean sub-seafloor drilling cores and data.",cts:false},
+  {name:"Neotoma",host:"Neotoma Consortium",country:"USA",disc:"Paleoscience",cur:"Full discipline-specific",pub:true,url:"https://neotomadb.org",r3:null,desc:"Fossil, paleoecological and paleoenvironmental data.",cts:false},
+  {name:"NOAA Paleoclimatology",host:"NOAA NCEI",country:"USA",disc:"Paleoscience",cur:"Full discipline-specific",pub:false,url:"https://www.ncei.noaa.gov/products/paleoclimatology",r3:"r3d100010311",desc:"Tree rings, corals, ice cores.",cts:false},
+  {name:"Scripps CO₂ Program",host:"SIO / UCSD",country:"USA",disc:"Atmosphere & climate",cur:"Full discipline-specific",pub:false,url:"https://scrippsco2.ucsd.edu",r3:null,desc:"Mauna Loa Keeling Curve and global CO₂ network.",cts:false},
+  {name:"NOAA GML",host:"NOAA",country:"USA",disc:"Atmosphere & climate",cur:"Full discipline-specific",pub:false,url:"https://gml.noaa.gov",r3:"r3d100010966",desc:"Global Monitoring Laboratory greenhouse gases.",cts:false},
+  {name:"ICOS Carbon Portal",host:"ICOS ERIC",country:"Sweden",disc:"Atmosphere & climate",cur:"Full discipline-specific",pub:true,url:"https://www.icos-cp.eu",r3:null,desc:"Integrated Carbon Observation System data.",cts:true},
+  {name:"SOCAT",host:"NOAA PMEL",country:"International",disc:"Atmosphere & climate",cur:"Full discipline-specific",pub:false,url:"https://socat.info",r3:null,desc:"Surface Ocean CO₂ Atlas synthesized observations.",cts:false},
+  {name:"Native Land Digital",host:"NLD",country:"Canada",disc:"Indigenous knowledge",cur:"Full discipline-specific",pub:true,url:"https://native-land.ca",r3:null,desc:"Maps of Indigenous territories, languages and treaties.",cts:false},
+];
+const GR=[
+  {c:"HD",n:"Harvard Dataverse",u:"https://dataverse.harvard.edu",t:{"<10":1,"<20":1,"<50":1,"<300":1,"<1TB":1,"1TB+":"$"}},
+  {c:"DR",n:"Dryad",u:"https://datadryad.org",t:{"<10":"$","<20":"$","<50":"$","<300":"$","<1TB":"$","1TB+":"$"}},
+  {c:"FI",n:"Figshare",u:"https://figshare.com",t:{"<10":1,"<20":1,"<50":"$","<300":"$","<1TB":"$","1TB+":"$"}},
+  {c:"MD",n:"Mendeley Data",u:"https://data.mendeley.com",t:{"<10":1,"<20":1,"<50":0,"<300":0,"<1TB":0,"1TB+":0}},
+  {c:"OS",n:"OSF",u:"https://osf.io",t:{"<10":1,"<20":1,"<50":1,"<300":"$","<1TB":"$","1TB+":"$"}},
+  {c:"VI",n:"Vivli",u:"https://vivli.org",t:{"<10":1,"<20":1,"<50":1,"<300":"$","<1TB":"$","1TB+":"$"}},
+  {c:"ZE",n:"Zenodo",u:"https://zenodo.org",t:{"<10":1,"<20":1,"<50":1,"<300":1,"<1TB":0,"1TB+":0}},
+];
+const TK=["<10","<20","<50","<300","<1TB","1TB+"],TL={"<10":"< 10 GB","<20":"< 20 GB","<50":"< 50 GB","<300":"< 300 GB","<1TB":"< 1 TB","1TB+":"1 TB+"};
+
+let LR=[],LT=null;const $=id=>document.getElementById(id);
+const ad=new Set([...new Set(R.map(r=>r.disc))].sort());const allD=[...ad];
+allD.forEach(d=>{const o=document.createElement("option");o.textContent=d;$("df").appendChild(o);});
+
+function bp(){
+  $("pp").innerHTML="";
+  allD.forEach(d=>{
+    const [bg]=DC[d]||["#888"];
+    const b=document.createElement("button");
+    b.className="pill"+(ad.has(d)?" on":"");b.style.background=bg;b.textContent=d;
+    b.onclick=()=>{ad.has(d)?ad.delete(d):ad.add(d);bp();bg_();};
+    $("pp").appendChild(b);
+  });
+}
+bp();
+
+let sL=true,sA=true;
+function bg_(){
+  const ct=$("gc").parentElement;const W=ct.clientWidth,H=600;
+  const svg=d3.select("#gc").attr("viewBox",`0 0 ${W} ${H}`).attr("width","100%").attr("height",H);
+  svg.selectAll("*").remove();
+  const defs=svg.append("defs");
+  Object.entries(DC).forEach(([d,[c1,c2]])=>{
+    const id="g_"+d.replace(/[^a-zA-Z0-9]/g,"_");
+    const gr=defs.append("radialGradient").attr("id",id);
+    gr.append("stop").attr("offset","0%").attr("stop-color",c2).attr("stop-opacity",0.95);
+    gr.append("stop").attr("offset","100%").attr("stop-color",c1).attr("stop-opacity",0.7);
+  });
+  const g=svg.append("g");
+  const nodes=R.filter(r=>ad.has(r.disc)).map((r,i)=>({...r,id:i}));
+  const links=[];const bd={};
+  nodes.forEach(n=>{(bd[n.disc]=bd[n.disc]||[]).push(n);});
+  Object.values(bd).forEach(gr=>{for(let i=0;i<gr.length;i++)for(let j=i+1;j<gr.length;j++)links.push({source:gr[i].id,target:gr[j].id});});
+  $("ncn").textContent=nodes.length+" nodes";
+  const zm=d3.zoom().scaleExtent([0.15,6]).filter(e=>!e.target.closest?.("circle")).on("zoom",e=>{g.attr("transform",e.transform);$("zrd").textContent=Math.round(e.transform.k*100)+"%";});
+  svg.call(zm);
+  const sim=d3.forceSimulation(nodes).force("link",d3.forceLink(links).id(d=>d.id).distance(40).strength(0.04)).force("charge",d3.forceManyBody().strength(-90)).force("center",d3.forceCenter(W/2,H/2)).force("collide",d3.forceCollide(16)).force("gravity",d3.forceRadial(0,W/2,H/2).strength(0.01));
+  const lkG=g.append("g");
+  let lkE=lkG.selectAll("line").data(links).join("line").attr("stroke","rgba(255,255,255,0.06)").attr("stroke-width",0.5);
+  lkG.style("display",sL?null:"none");
+  const ndG=g.append("g");
+  const ndE=ndG.selectAll("circle").data(nodes).join("circle").attr("r",d=>d.cts?10:7).attr("fill",d=>"url(#g_"+d.disc.replace(/[^a-zA-Z0-9]/g,"_")+")").attr("stroke",d=>(DC[d.disc]||["#888"])[0]).attr("stroke-width",0.5).attr("stroke-opacity",0.5).style("cursor","pointer").style("filter","drop-shadow(0 0 3px rgba(255,255,255,0.12))");
+  const laG=g.append("g");
+  let laE=laG.selectAll("text").data(nodes).join("text").text(d=>d.name).attr("font-size",8.5).attr("font-family","'DM Sans',sans-serif").attr("fill","rgba(255,255,255,0.55)").attr("text-anchor","middle").attr("dy",-14).style("pointer-events","none");
+  laG.style("display",sA?null:"none");
+  ndE.on("mouseover",function(e,d){d3.select(this).attr("r",d.cts?14:10).style("filter","drop-shadow(0 0 8px rgba(255,255,255,0.35))");sd(d);}).on("mouseout",function(e,d){d3.select(this).attr("r",d.cts?10:7).style("filter","drop-shadow(0 0 3px rgba(255,255,255,0.12))");}).on("click",(e,d)=>{if(d.url)window.open(d.url,"_blank");});
+  ndE.call(d3.drag().on("start",(e,d)=>{if(!e.active)sim.alphaTarget(0.3).restart();d.fx=d.x;d.fy=d.y;}).on("drag",(e,d)=>{d.fx=e.x;d.fy=e.y;}).on("end",(e,d)=>{if(!e.active)sim.alphaTarget(0);d.fx=null;d.fy=null;}));
+  sim.on("tick",()=>{lkE.attr("x1",d=>d.source.x).attr("y1",d=>d.source.y).attr("x2",d=>d.target.x).attr("y2",d=>d.target.y);ndE.attr("cx",d=>d.x).attr("cy",d=>d.y);laE.attr("x",d=>d.x).attr("y",d=>d.y);});
+  $("zi").onclick=()=>svg.transition().duration(200).call(zm.scaleBy,1.5);
+  $("zo").onclick=()=>svg.transition().duration(200).call(zm.scaleBy,1/1.5);
+  $("zx").onclick=()=>svg.transition().duration(250).call(zm.transform,d3.zoomIdentity);
+  $("zf").onclick=()=>{if(!nodes.length)return;const xs=nodes.map(n=>n.x),ys=nodes.map(n=>n.y);const[x0,x1,y0,y1]=[Math.min(...xs),Math.max(...xs),Math.min(...ys),Math.max(...ys)];const dx=x1-x0||1,dy=y1-y0||1;const s=0.85/Math.max(dx/W,dy/H);svg.transition().duration(350).call(zm.transform,d3.zoomIdentity.translate(W/2-s*(x0+x1)/2,H/2-s*(y0+y1)/2).scale(s));};
+  $("tl").onclick=function(){sL=!sL;lkG.style("display",sL?null:"none");this.classList.toggle("on",sL);};
+  $("ta").onclick=function(){sA=!sA;laG.style("display",sA?null:"none");this.classList.toggle("on",sA);};
+  $("gs").oninput=function(){const q=this.value.trim().toLowerCase();ndE.attr("opacity",d=>!q||(d.name+" "+d.host+" "+d.disc).toLowerCase().includes(q)?1:0.1);laE.attr("fill-opacity",d=>!q||(d.name+" "+d.host+" "+d.disc).toLowerCase().includes(q)?1:0.1);};
+}
+
+function sd(d){
+  const p=$("dp");p.classList.add("vis");
+  $("dn").textContent=d.name;
+  const parts=[d.host,d.country].filter(Boolean);if(d.rstar)parts.push("R* "+d.rstar);
+  $("dmt").textContent=parts.join(" · ");$("dde").textContent=d.desc;
+  const[bg,fg]=DB[d.disc]||["#F1EFE8","#444441"];
+  let b=`<span class="badge" style="background:${bg};color:${fg};">${d.disc}</span>`;
+  if(d.cts)b+=`<span class="badge" style="background:#E1F5EE;color:#085041;">CoreTrustSeal</span>`;
+  if(d.pub)b+=`<span class="badge" style="background:#E6F1FB;color:#0C447C;">Publisher ✝</span>`;
+  $("dba").innerHTML=b;
+  let lk="";if(d.url)lk+=`<a href="${d.url}" target="_blank">Website ↗</a>`;if(d.r3)lk+=`<a href="https://www.re3data.org/repository/${d.r3}" target="_blank">re3data ↗</a>`;if(d.ror)lk+=`<a href="${d.ror}" target="_blank">ROR ↗</a>`;
+  $("dlk").innerHTML=lk;
+}
+
+function ar(){if(!$("lf").checked||!LR.length)return R;const k=new Set(R.filter(r=>r.r3).map(r=>r.r3));return R.concat(LR.filter(r=>!k.has(r.r3)).map(r=>({name:r.name,host:"",country:"",disc:"Live (re3data)",cur:"Generalist",pub:false,cts:false,url:"https://www.re3data.org/repository/"+r.r3,r3:r.r3,desc:"Live result from re3data API."})));}
+function rb(){
+  const qv=$("q").value.trim().toLowerCase(),dv=$("df").value,cv=$("cf").value,po=$("pf").checked;
+  const src=ar();const fl=src.filter(r=>{if(dv&&r.disc!==dv)return false;if(cv&&r.cur!==cv)return false;if(po&&!r.pub)return false;if(qv&&!(r.name+" "+r.host+" "+r.desc+" "+r.disc).toLowerCase().includes(qv))return false;return true;});
+  $("mc").textContent=fl.length;$("md").textContent=new Set(fl.map(r=>r.disc)).size;$("mp").textContent=fl.filter(r=>r.pub).length;$("mr").textContent=LT?LT.toLocaleString():"—";$("bc").textContent=fl.length+" of "+src.length;
+  $("list").innerHTML=fl.slice(0,200).map(r=>{const pm=r.pub?`<span style="color:#0f6e56;font-weight:500;margin-right:4px;">✝</span>`:"";const r3l=r.r3?`<a href="https://www.re3data.org/repository/${r.r3}" style="font-size:12px;color:var(--accent);text-decoration:none;">re3data ↗</a>`:"";const mt=[r.host,r.country].filter(Boolean).join(" · ");const[bg,fg]=DB[r.disc]||["#F1EFE8","#444441"];const cb=r.cts?`<span class="badge" style="background:#E1F5EE;color:#085041;">CoreTrustSeal</span>`:"";return`<div class="card"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:3px;"><div style="font-size:14px;font-weight:500;">${pm}${r.name}</div><div style="font-size:12px;color:var(--text-2);">${mt}</div></div><div style="font-size:12px;color:var(--text-2);line-height:1.5;margin:6px 0 8px;">${r.desc}</div><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;"><div style="display:flex;gap:6px;flex-wrap:wrap;"><span class="badge" style="background:${bg};color:${fg};">${r.disc}</span>${cb}</div><div style="display:flex;gap:10px;">${r.url?`<a href="${r.url}" style="font-size:12px;color:var(--accent);text-decoration:none;">site ↗</a>`:""}${r3l}</div></div></div>`;}).join("");
+}
+["q","df","cf"].forEach(id=>$(id).addEventListener("input",rb));$("pf").addEventListener("change",rb);$("lf").addEventListener("change",rb);
+
+let aT="<50";
+function rt(){$("trs").innerHTML=TK.map(t=>`<button class="tbn${t===aT?" on":""}" data-t="${t}">${TL[t]}</button>`).join("");$("trs").querySelectorAll("button").forEach(b=>b.onclick=()=>{aT=b.dataset.t;rt();rg();});}
+function rg(){$("gg").innerHTML=GR.map(g=>{const v=g.t[aT];const ok=v===1||v==="$";const fee=v==="$";const st=!ok?`<span style="font-size:11px;color:var(--text-3);">not available</span>`:fee?`<span class="badge" style="background:#FAEEDA;color:#633806;">fee $</span>`:`<span class="badge" style="background:#E1F5EE;color:#085041;">included</span>`;return`<div class="card" style="opacity:${ok?1:0.4};"><div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:6px;"><div style="font-size:13px;font-weight:500;">${g.n}</div><div style="font-size:11px;font-family:var(--mono);color:var(--text-3);">${g.c}</div></div><div style="display:flex;justify-content:space-between;align-items:center;">${st}<a href="${g.u}" style="font-size:11px;color:var(--accent);text-decoration:none;">site ↗</a></div></div>`;}).join("");}
+
+function st(n){["vr","vb","vg"].forEach(t=>{$(t).style.display=(t==="v"+n)?"block":"none";});["t1","t2","t3"].forEach((t,i)=>{$(t).classList.toggle("on",["r","b","g"][i]===n);});if(n==="b")rb();if(n==="g"){rt();rg();}}
+$("t1").onclick=()=>st("r");$("t2").onclick=()=>st("b");$("t3").onclick=()=>st("g");
+
+async function fl(){$("ld").style.background="#EF9F27";$("lt").textContent="Loading…";try{const res=await fetch("./repositories.json",{cache:"no-cache"});if(!res.ok)throw new Error("HTTP "+res.status);const data=await res.json();if(!data.repositories?.length)throw 0;LR=data.repositories.map(r=>({r3:r.id,name:r.name}));LT=data.count||data.repositories.length;const u=data.updated?new Date(data.updated).toLocaleDateString(undefined,{year:"numeric",month:"short",day:"numeric"}):"unknown";$("ld").style.background="#1D9E75";$("lt").innerHTML=`Snapshot · ${LT.toLocaleString()} repositories · updated ${u}`;}catch(e){$("ld").style.background="#9d9c97";$("lt").innerHTML=`Curated set (${R.length} repositories)`;LT=null;}}
+
+bg_();fl();
+</script>
+</body>
+</html>
